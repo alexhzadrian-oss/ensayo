@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventura de la Rata y el Queso</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Canvas Confetti for Victory Effect -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+            background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col items-center justify-between p-4 selection:bg-amber-500 selection:text-white">
+
+    <header class="w-full max-w-md flex items-center justify-between bg-slate-800/80 backdrop-blur-md px-5 py-3 rounded-2xl border border-slate-700 shadow-xl mb-3">
+        <div class="flex items-center gap-3">
+            <span class="text-3xl animate-bounce">🐀</span>
+            <div>
+                <h1 class="font-extrabold text-lg text-amber-400 tracking-wide">Laberinto Quesero</h1>
+                <p class="text-xs text-slate-400" id="current-level-label">Nivel 1: Exploración</p>
+            </div>
+        </div>
+        <button onclick="toggleSound()" id="sound-btn" class="p-2 rounded-xl bg-slate-700/60 hover:bg-slate-700 text-slate-300 transition-colors" title="Activar/Desactivar sonido">
+            <i data-lucide="volume-2" class="w-5 h-5"></i>
+        </button>
+    </header>
+
+    <main class="w-full max-w-md flex flex-col items-center flex-1 justify-center">
+        
+        <!-- Stats bar -->
+        <div class="w-full flex justify-between items-center bg-slate-800/60 px-4 py-2 rounded-xl border border-slate-700/50 mb-3 text-sm shadow-md">
+            <div class="flex items-center gap-1.5 text-slate-300">
+                <i data-lucide="footprints" class="w-4 h-4 text-amber-400"></i>
+                <span>Movimientos: <strong id="moves-count" class="text-white">0</strong></span>
+            </div>
+            <div class="flex items-center gap-1.5 text-slate-300">
+                <i data-lucide="clock" class="w-4 h-4 text-emerald-400"></i>
+                <span>Tiempo: <strong id="timer-count" class="text-white">0s</strong></span>
+            </div>
+        </div>
+
+        <!-- Start Screen Container -->
+        <div id="start-screen" class="w-full bg-slate-800/90 border border-slate-700 rounded-3xl p-6 text-center shadow-2xl relative overflow-hidden flex flex-col items-center backdrop-blur-sm">
+            <div class="absolute -right-10 -top-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+            <div class="absolute -left-10 -bottom-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
+            
+            <div class="text-6xl mb-4 animate-pulse">🧀</div>
+            <h2 class="text-2xl font-bold mb-2 text-white">¡Ayuda a la rata hambrienta!</h2>
+            <p class="text-slate-300 text-sm mb-6 max-w-xs leading-relaxed">
+                Guía a <span class="text-amber-400 font-semibold">🐀</span> por los pasillos oscuros hasta encontrar el delicioso <span class="text-amber-300 font-semibold">🧀</span>. ¡Usa flechas, WASD o los botones táctiles!
+            </p>
+
+            <div class="w-full space-y-3 mb-2">
+                <button onclick="startGame()" class="w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 group cursor-pointer text-base">
+                    <i data-lucide="play" class="w-5 h-5 fill-current"></i>
+                    <span>Iniciar Aventura</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Play Area Container -->
+        <div id="game-screen" class="hidden w-full flex flex-col items-center">
+            <!-- Canvas Wrapper -->
+            <div class="relative bg-slate-950 p-2 rounded-2xl border-2 border-slate-700 shadow-2xl overflow-hidden mb-4">
+                <canvas id="maze-canvas" class="block rounded-lg max-w-full h-auto mx-auto"></canvas>
+            </div>
+
+            <!-- Mobile Touch Controls -->
+            <div class="w-full max-w-[260px] grid grid-cols-3 gap-2 mt-1">
+                <div></div>
+                <button onclick="handleControl('up')" class="bg-slate-800 hover:bg-slate-700 active:bg-amber-600 active:scale-95 border border-slate-700 p-4 rounded-2xl flex items-center justify-center text-slate-200 transition-all shadow-md cursor-pointer">
+                    <i data-lucide="chevron-up" class="w-6 h-6"></i>
+                </button>
+                <div></div>
+                <button onclick="handleControl('left')" class="bg-slate-800 hover:bg-slate-700 active:bg-amber-600 active:scale-95 border border-slate-700 p-4 rounded-2xl flex items-center justify-center text-slate-200 transition-all shadow-md cursor-pointer">
+                    <i data-lucide="chevron-left" class="w-6 h-6"></i>
+                </button>
+                <button onclick="handleControl('down')" class="bg-slate-800 hover:bg-slate-700 active:bg-amber-600 active:scale-95 border border-slate-700 p-4 rounded-2xl flex items-center justify-center text-slate-200 transition-all shadow-md cursor-pointer">
+                    <i data-lucide="chevron-down" class="w-6 h-6"></i>
+                </button>
+                <button onclick="handleControl('right')" class="bg-slate-800 hover:bg-slate-700 active:bg-amber-600 active:scale-95 border border-slate-700 p-4 rounded-2xl flex items-center justify-center text-slate-200 transition-all shadow-md cursor-pointer">
+                    <i data-lucide="chevron-right" class="w-6 h-6"></i>
+                </button>
+            </div>
+        </div>
+
+        <div id="victory-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 text-center max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div class="text-6xl mb-3 animate-bounce">🎉</div>
+                <h3 class="text-2xl font-bold text-white mb-1">¡Queso Encontrado!</h3>
+                <p class="text-slate-400 text-sm mb-5">¡La rata está satisfecha y lista para un laberinto más grande!</p>
+                
+                <div class="bg-slate-900/60 rounded-xl p-4 mb-5 border border-slate-700/50 flex justify-around text-center">
+                    <div>
+                        <span class="block text-xs text-slate-400">Movimientos</span>
+                        <strong id="final-moves" class="text-amber-400 text-lg">0</strong>
+                    </div>
+                    <div class="border-r border-slate-700"></div>
+                    <div>
+                        <span class="block text-xs text-slate-400">Tiempo</span>
+                        <strong id="final-time" class="text-emerald-400 text-lg">0s</strong>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <button onclick="nextLevel()" class="w-full py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                        <span>Siguiente Nivel</span>
+                        <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                    </button>
+                    <button onclick="returnToMenu()" class="w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold rounded-xl transition-all cursor-pointer">
+                        Menú Principal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="w-full max-w-md text-center py-2 text-xs text-slate-500">
+        Juego de Laberinto HTML5 &bull; Rata vs Queso
+    </footer>
+
+    <script>
+        let currentLevel = 1;
+        let cols = 11; // Must be odd for proper maze generation
+        let rows = 11;
+        let grid = [];
+        let rat = { x: 1, y: 1 };
+        let cheese = { x: 0, y: 0 };
+        let moves = 0;
+        let seconds = 0;
+        let timerInterval = null;
+        let soundEnabled = true;
+        let gameActive = false;
+        let cellSize = 30;
+
+        const canvas = document.getElementById('maze-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Web Audio API Sound Synthesizer
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playTone(freq, type, duration) {
+            if (!soundEnabled) return;
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio error", e);
+            }
+        }
+
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('sound-btn');
+            btn.innerHTML = soundEnabled ? '<i data-lucide="volume-2" class="w-5 h-5"></i>' : '<i data-lucide="volume-x" class="w-5 h-5 text-red-400"></i>';
+            lucide.createIcons();
+        }
+
+        // Generate Maze using randomized depth-first search
+        function generateMaze() {
+            grid = Array(rows).fill(null).map(() => Array(cols).fill(1));
+            
+            function isValid(r, c) {
+                return r > 0 && r < rows - 1 && c > 0 && c < cols - 1;
+            }
+
+            function carve(r, c) {
+                grid[r][c] = 0;
+                const directions = [
+                    { dr: -2, dc: 0 },
+                    { dr: 2, dc: 0 },
+                    { dr: 0, dc: -2 },
+                    { dr: 0, dc: 2 }
+                ].sort(() => Math.random() - 0.5);
+
+                for (let d of directions) {
+                    let nextR = r + d.dr;
+                    let nextC = c + d.dc;
+                    if (isValid(nextR, nextC) && grid[nextR][nextC] === 1) {
+                        grid[r + d.dr / 2][c + d.dc / 2] = 0;
+                        carve(nextR, nextC);
+                    }
+                }
+            }
+
+            carve(1, 1);
+            
+            // Set rat start and cheese target
+            rat = { x: 1, y: 1 };
+            grid[rat.y][rat.x] = 0;
+
+            // Place cheese as far as possible
+            let maxDist = -1;
+            for (let r = 1; r < rows - 1; r += 2) {
+                for (let c = 1; c < cols - 1; c += 2) {
+                    if (grid[r][c] === 0) {
+                        let dist = Math.abs(r - rat.y) + Math.abs(c - rat.x);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            cheese = { x: c, y: r };
+                        }
+                    }
+                }
+            }
+            // Fallback if needed
+            if (maxDist === -1) {
+                cheese = { x: cols - 2, y: rows - 2 };
+                grid[cheese.y][cheese.x] = 0;
+            }
+        }
+
+        function startGame() {
+            // Adjust maze size based on level
+            if (currentLevel === 1) { cols = 11; rows = 11; }
+            else if (currentLevel === 2) { cols = 15; rows = 15; }
+            else { cols = 19; rows = 19; }
+
+            document.getElementById('current-level-label').innerText = `Nivel ${currentLevel}: Laberinto ${cols}x${rows}`;
+
+            generateMaze();
+
+            // Set canvas dimensions
+            const maxWidth = Math.min(window.innerWidth - 48, 380);
+            cellSize = Math.floor(maxWidth / cols);
+            canvas.width = cols * cellSize;
+            canvas.height = rows * cellSize;
+
+            moves = 0;
+            seconds = 0;
+            document.getElementById('moves-count').innerText = moves;
+            document.getElementById('timer-count').innerText = '0s';
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+
+            startTimer();
+            gameActive = true;
+            drawMaze();
+            playTone(440, 'sine', 0.15);
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('timer-count').innerText = seconds + 's';
+            }, 1000);
+        }
+
+        function drawMaze() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (grid[r][c] === 1) {
+                        ctx.fillStyle = '#1e293b'; // Wall color
+                        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                        ctx.strokeStyle = '#0f172a';
+                        ctx.strokeRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    } else {
+                        ctx.fillStyle = '#0f172a'; // Path color
+                        ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+                    }
+                }
+            }
+
+            // Draw Cheese
+            ctx.font = `${Math.floor(cellSize * 0.75)}px sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🧀', (cheese.x + 0.5) * cellSize, (cheese.y + 0.5) * cellSize);
+
+            // Draw Rat
+            ctx.fillText('🐀', (rat.x + 0.5) * cellSize, (rat.y + 0.5) * cellSize);
+        }
+
+        function moveRat(dx, dy) {
+            if (!gameActive) return;
+
+            let newX = rat.x + dx;
+            let newY = rat.y + dy;
+
+            if (newX >= 0 && newX < cols && newY >= 0 && newY < rows) {
+                if (grid[newY][newX] === 0) {
+                    rat.x = newX;
+                    rat.y = newY;
+                    moves++;
+                    document.getElementById('moves-count').innerText = moves;
+                    playTone(280, 'triangle', 0.06);
+
+                    if (rat.x === cheese.x && rat.y === cheese.y) {
+                        triggerVictory();
+                    } else {
+                        drawMaze();
+                    }
+                } else {
+                    playTone(140, 'sawtooth', 0.08); // Hit wall sound
+                }
+            }
+        }
+
+        function handleControl(dir) {
+            if (dir === 'up') moveRat(0, -1);
+            if (dir === 'down') moveRat(0, 1);
+            if (dir === 'left') moveRat(-1, 0);
+            if (dir === 'right') moveRat(1, 0);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            if (['ArrowUp', 'KeyW'].includes(e.code)) { e.preventDefault(); moveRat(0, -1); }
+            if (['ArrowDown', 'KeyS'].includes(e.code)) { e.preventDefault(); moveRat(0, 1); }
+            if (['ArrowLeft', 'KeyA'].includes(e.code)) { e.preventDefault(); moveRat(-1, 0); }
+            if (['ArrowRight', 'KeyD'].includes(e.code)) { e.preventDefault(); moveRat(1, 0); }
+        });
+
+        function triggerVictory() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            playTone(587.33, 'sine', 0.2);
+            setTimeout(() => playTone(880, 'sine', 0.3), 150);
+
+            confetti({
+                particleCount: 120,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+
+            document.getElementById('final-moves').innerText = moves;
+            document.getElementById('final-time').innerText = seconds + 's';
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+        function nextLevel() {
+            currentLevel++;
+            if (currentLevel > 3) currentLevel = 1; // Loop or expand
+            startGame();
+        }
+
+        function returnToMenu() {
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('game-screen').classList.add('hidden');
+            document.getElementById('start-screen').classList.remove('hidden');
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+    </script>
+</body>
+</html>
